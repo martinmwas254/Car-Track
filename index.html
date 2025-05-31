@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarTrack Pro Kenya - Vehicle Tracking System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a5f3f 0%, #c41e3a 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #1a5f3f;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .kenya-flag {
+            display: inline-block;
+            width: 30px;
+            height: 20px;
+            background: linear-gradient(to bottom, #000 33%, #c41e3a 33%, #c41e3a 66%, #1a5f3f 66%);
+            border-radius: 3px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #1a5f3f, #c41e3a);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .map-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        #map {
+            height: 500px;
+            border-radius: 10px;
+        }
+
+        .vehicle-list {
+            margin-top: 1rem;
+        }
+
+        .vehicle-item {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .vehicle-item:hover {
+            background: #edf2f7;
+            transform: translateX(5px);
+        }
+
+        .vehicle-item.active {
+            border-color: #1a5f3f;
+            background: #e6fffa;
+        }
+
+        .vehicle-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .vehicle-status {
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-online {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-offline {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-moving {
+            background: #bee3f8;
+            color: #2a4365;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #1a5f3f;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1a5f3f;
+        }
+
+        .stat-label {
+            color: #718096;
+            margin-top: 0.5rem;
+        }
+
+        .vehicle-details {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .map-control-btn {
+            background: white;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            padding: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .map-control-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.05);
+        }
+
+        .map-control-btn.active {
+            background: #1a5f3f;
+            color: white;
+        }
+
+        .geofence-controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .route-info {
+            background: #e6fffa;
+            border: 1px solid #38b2ac;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .leaflet-routing-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .custom-marker {
+            background: #1a5f3f;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .vehicle-trail {
+            stroke: #1a5f3f;
+            stroke-width: 3;
+            fill: none;
+            opacity: 0.7;
+        }
+
+        .location-info {
+            background: #e6fffa;
+            border: 1px solid #1a5f3f;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .location-info h4 {
+            color: #1a5f3f;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer {
+            background: rgba(26, 32, 44, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 3rem 0 1rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section h4 {
+            color: #1a5f3f;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .footer-section p, .footer-section li {
+            color: #a0aec0;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-section a {
+            color: #a0aec0;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section a:hover {
+            color: #1a5f3f;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #4a5568;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            text-align: center;
+            color: #718096;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .social-links a {
+            background: #4a5568;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-links a:hover {
+            background: #1a5f3f;
+            transform: translateY(-2px);
+        }
+
+        .feature-highlight {
+            background: linear-gradient(45deg, #1a5f3f, #c41e3a);
+            padding: 0.2rem 0.5rem;
+            border-radius: 15px;
+            color: white;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+                padding: 0 1rem;
+            }
+
+            .social-links {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <span class="kenya-flag"></span>
+            🚗 CarTrack Pro Kenya
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-primary" onclick="openAddVehicleModal()">Add Vehicle</button>
+            <button class="btn btn-secondary" onclick="toggleTracking()">Start Tracking</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalVehicles">0</div>
+                <div class="stat-label">Total Vehicles</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeVehicles">0</div>
+                <div class="stat-label">Active</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="movingVehicles">0</div>
+                <div class="stat-label">Moving</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="alertsCount">0</div>
+                <div class="stat-label">Alerts</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="sidebar">
+                <h3>🇰🇪 Kenya Fleet</h3>
+                <div class="vehicle-list" id="vehicleList"></div>
+                
+                <div class="vehicle-details" id="vehicleDetails" style="display: none;">
+                    <h4>Vehicle Details</h4>
+                    <div id="detailsContent"></div>
+                </div>
+
+                <div class="location-info">
+                    <h4>Coverage Areas</h4>
+                    <p><strong>🏙️ Major Cities:</strong> Nairobi, Mombasa, Kisumu, Nakuru</p>
+                    <p><strong>📍 Current Zone:</strong> Central Kenya</p>
+                    <p><strong>🛰️ GPS Status:</strong> <span style="color: #22543d;">Online</span></p>
+                </div>
+            </div>
+
+            <div class="map-container" style="position: relative;">
+                <h3>🗺️ Live Tracking - Kenya</h3>
+                <div id="map"></div>
+                <div class="map-controls">
+                    <button class="map-control-btn" onclick="toggleClustering()" title="Toggle Clustering">📍</button>
+                    <button class="map-control-btn" onclick="toggleHeatmap()" title="Toggle Heatmap">🔥</button>
+                    <button class="map-control-btn" onclick="showTrafficLayer()" title="Toggle Traffic">🚦</button>
+                    <button class="map-control-btn" onclick="toggleGeofencing()" title="Geofencing">⭕</button>
+                    <button class="map-control-btn" onclick="showRouting()" title="Route Planning">🗺️</button>
+                    <button class="map-control-btn" onclick="centerAllVehicles()" title="Center All">🎯</button>
+                    <button class="map-control-btn" onclick="focusNairobi()" title="Focus Nairobi">🏙️</button>
+                </div>
+                <div class="geofence-controls" id="geofenceControls" style="display: none;">
+                    <h4>Geofence Controls</h4>
+                    <button class="btn btn-primary" onclick="drawGeofence()">Draw Geofence</button>
+                    <button class="btn btn-secondary" onclick="clearGeofences()">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="alerts">
+            <!-- Alerts will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>🚗 CarTrack Pro Kenya</h4>
+                <p>Advanced vehicle tracking and fleet management solution for Kenyan businesses. Monitor, track, and optimize your fleet operations across Kenya with real-time insights.</p>
+                <div class="social-links">
+                    <a href="#" title="Facebook">📘</a>
+                    <a href="#" title="Twitter">🐦</a>
+                    <a href="#" title="LinkedIn">💼</a>
+                    <a href="#" title="WhatsApp">💬</a>
+                </div>
+            </div>
+
+            <div class="footer-section">
+                <h4>Kenya Features</h4>
+                <ul>
+                    <li><a href="#">Real-time Tracking <span class="feature-highlight">LIVE</span></a></li>
+                    <li><a href="#">Nairobi Coverage</a></li>
+                    <li><a href="#">Mombasa Routes</a></li>
+                    <li><a href="#">Highway Monitoring</a></li>
+                    <li><a href="#">Matatu Tracking</a></li>
+                    <li><a href="#">Fuel Station Alerts</a></li>
+                    <li><a href="#">Police Station Map</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Kenya Coverage</h4>
+                <ul>
+                    <li><a href="#">Nairobi County</a></li>
+                    <li><a href="#">Mombasa County</a></li>
+                    <li><a href="#">Kisumu County</a></li>
+                    <li><a href="#">Nakuru County</a></li>
+                    <li><a href="#">Eldoret Coverage</a></li>
+                    <li><a href="#">Thika Road</a></li>
+                    <li><a href="#">Mombasa Road</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Kenya Support</h4>
+                <ul>
+                    <li><a href="#">📞 +254 700 123 456</a></li>
+                    <li><a href="#">📧 support@cartrack.co.ke</a></li>
+                    <li><a href="#">💬 WhatsApp Support</a></li>
+                    <li><a href="#">🏢 Nairobi Office</a></li>
+                    <li><a href="#">🏢 Mombasa Office</a></li>
+                    <li><a href="#">📍 Service Centers</a></li>
+                    <li><a href="#">🔧 24/7 Kenya Support</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Kenya Locations</h4>
+                <p>🏢 <strong>Head Office:</strong><br>Westlands, Nairobi</p>
+                <p>🏢 <strong>Coast Office:</strong><br>Nyali, Mombasa</p>
+                <p>📞 <strong>Hotline:</strong><br>+254 700 TRACK (87225)</p>
+                <p>🕒 <strong>Working Hours:</strong><br>Mon-Fri: 8AM-6PM<br>Sat: 9AM-1PM</p>
+                <div style="margin-top: 1rem;">
+                    <span style="background: #22543d; color: #c6f6d5; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.8rem;">
+                        🟢 Kenya Network Online
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2025 CarTrack Pro Kenya. All rights reserved. | Built for Kenya's transport needs</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                Trusted by 1,000+ Kenyan businesses • 99.9% uptime • Licensed by Communications Authority of Kenya
+            </p>
+        </div>
+    </footer>
+
+    <!-- Add Vehicle Modal -->
+    <div id="addVehicleModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddVehicleModal()">&times;</span>
+            <h2>Add New Vehicle - Kenya</h2>
+            <form id="addVehicleForm">
+                <div class="form-group">
+                    <label for="vehicleName">Vehicle Name:</label>
+                    <input type="text" id="vehicleName" required>
+                </div>
+                <div class="form-group">
+                    <label for="licensePlate">License Plate (Kenya):</label>
+                    <input type="text" id="licensePlate" placeholder="KCA 123A" required>
+                </div>
+                <div class="form-group">
+                    <label for="vehicleType">Vehicle Type:</label>
+                    <select id="vehicleType" required>
+                        <option value="">Select Type</option>
+                        <option value="car">Car</option>
+                        <option value="matatu">Matatu</option>
+                        <option value="truck">Truck</option>
+                        <option value="van">Van</option>
+                        <option value="motorcycle">Boda Boda</option>
+                        <option value="bus">Bus</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="driverName">Driver Name:</label>
+                    <input type="text" id="driverName" required>
+                </div>
+                <div class="form-group">
+                    <label for="location">Starting Location:</label>
+                    <select id="location" required>
+                        <option value="">Select Location</option>
+                        <option value="nairobi">Nairobi</option>
+                        <option value="mombasa">Mombasa</option>
+                        <option value="kisumu">Kisumu</option>
+                        <option value="nakuru">Nakuru</option>
+                        <option value="eldoret">Eldoret</option>
+                        <option value="thika">Thika</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Vehicle</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <script>
+        // Global variables
+        let map;
+        let vehicles = [];
+        let trackingInterval;
+        let isTracking = false;
+        let selectedVehicle = null;
+        let vehicleMarkers = {};
+        let markerCluster;
+        let heatmapLayer;
+        let trafficLayer;
+        let drawControl;
+        let drawnItems;
+        let geofences = [];
+        let routingControl;
+        let vehicleTrails = {};
+
+        // Kenya locations
+        const kenyaLocations = {
+            nairobi: { lat: -1.286389, lng: 36.817223, name: "Nairobi" },
+            mombasa: { lat: -4.043477, lng: 39.668206, name: "Mombasa" },
+            kisumu: { lat: -0.091702, lng: 34.767956, name: "Kisumu" },
+            nakuru: { lat: -0.303099, lng: 36.080025, name: "Nakuru" },
+            eldoret: { lat: 0.514277, lng: 35.269779, name: "Eldoret" },
+            thika: { lat: -1.033216, lng: 37.069328, name: "Thika" }
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            loadSampleVehicles();
+            updateStats();
+            renderVehicleList();
+        });
+
+        // Initialize the map centered on Kenya
+        function initializeMap() {
+            map = L.map('map').setView([-1.286389, 36.817223], 7); // Centered on Nairobi, Kenya
+            
+            // Base layers
+            let osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            });
+            
+            let satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri'
+            });
+            
+            let streets = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            });
+
+            // Add default layer
+            osm.addTo(map);
+
+            // Layer control
+            let baseLayers = {
+                "OpenStreetMap": osm,
+                "Satellite": satellite,
+                "Streets": streets
+            };
+
+            // Initialize marker clustering
+            markerCluster = L.markerClusterGroup({
+                chunkedLoading: true,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true
+            });
+
+            // Initialize drawn items for geofencing
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            // Initialize draw control
+            drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    polygon: true,
+                    rectangle: true,
+                    circle: true,
+                    marker: false,
+                    circlemarker: false,
+                    polyline: false
+                }
+            });
+
+            // Layer control with overlays
+            let overlays = {
+                "Vehicle Clusters": markerCluster,
+                "Geofences": drawnItems
+            };
+
+            L.control.layers(baseLayers, overlays).addTo(map);
+
+            // Add Kenya major cities markers
+            addKenyaCityMarkers();
+
+            // Handle draw events
+            map.on(L.Draw.Event.CREATED, function(e) {
+                let layer = e.layer;
+                drawnItems.addLayer(layer);
+                geofences.push(layer);
+                checkGeofenceViolations();
+            });
+
+            map.on(L.Draw.Event.DELETED, function(e) {
+                geofences = geofences.filter(fence => !e.layers.hasLayer(fence));
+            });
+        }
+
+        // Add Kenya city markers
+        function addKenyaCityMarkers() {
+            Object.values(kenyaLocations).forEach(location => {
+                let cityIcon = L.divIcon({
+                    html: `<div style="background: #1a5f3f; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: bold;">${location.name}</div>`,
+                    className: 'city-marker',
+                    iconSize: [60, 20],
+                    iconAnchor: [30, 10]
+                });
+                
+                L.marker([location.lat, location.lng], { icon: cityIcon })
+                    .bindPopup(`<strong>🏙️ ${location.name}</strong><br>Major Kenyan City`)
+                    .addTo(map);
+            });
+        }
+
+        // Vehicle class
+        class Vehicle {
+            constructor(id, name, licensePlate, type, driver, lat, lng, location) {
+                this.id = id;
+                this.name = name;
+                this.licensePlate = licensePlate;
+                this.type = type;
+                this.driver = driver;
+                this.lat = lat;
+                this.lng = lng;
+                this.location = location;
+                this.status = 'online';
+                this.speed = 0;
+                this.lastUpdate = new Date();
+                this.battery = Math.floor(Math.random() * 100) + 1;
+                this.fuel = Math.floor(Math.random() * 100) + 1;
+                this.odometer = Math.floor(Math.random() * 50000) + 10000;
+            }
+
+            updatePosition() {
+                if (this.status === 'moving') {
+                    // Simulate movement
+                    const moveDistance = 0.001; // Roughly 100 meters
+                    this.lat += (Math.random() - 0.5) * moveDistance;
+                    this.lng += (Math.random() - 0.5) * moveDistance;
+                    this.speed = Math.floor(Math.random() * 80) + 10;
+                    this.odometer += Math.random() * 2;
+                } else {
+                    this.speed = 0;
+                }
+                this.lastUpdate = new Date();
+            }
+
+            getIcon() {
+                const icons = {
+                    car: '🚗',
+                    truck: '🚚',
+                    van: '🚐',
+                    motorcycle: '🏍️'
+                };
+                return icons[this.type] || '🚗';
+            }
+
+            getStatusColor() {
+                const colors = {
+                    online: '#22543d',
+                    offline: '#742a2a',
+                    moving: '#2a4365'
+                };
+                return colors[this.status] || '#22543d';
+            }
+        }
+
+        // Load sample vehicles
+        function loadSampleVehicles() {
+            const sampleData = [
+                { name: 'Fleet Car 01', plate: 'ABC-123', type: 'car', driver: 'John Smith', lat: 40.7128, lng: -74.0060 },
+                { name: 'Delivery Van', plate: 'DEF-456', type: 'van', driver: 'Jane Doe', lat: 40.7589, lng: -73.9851 },
+                { name: 'Truck Alpha', plate: 'GHI-789', type: 'truck', driver: 'Mike Johnson', lat: 40.6892, lng: -74.0445 },
+                { name: 'Motorcycle Beta', plate: 'JKL-012', type: 'motorcycle', driver: 'Sarah Wilson', lat: 40.7311, lng: -73.9970 }
+            ];
+
+            sampleData.forEach((data, index) => {
+                const vehicle = new Vehicle(
+                    index + 1,
+                    data.name,
+                    data.plate,
+                    data.type,
+                    data.driver,
+                    data.lat,
+                    data.lng
+                );
+                vehicle.status = Math.random() > 0.3 ? 'moving' : 'online';
+                vehicles.push(vehicle);
+                addVehicleToMap(vehicle);
+            });
+        }
+
+        // Add vehicle to map
+        function addVehicleToMap(vehicle) {
+            // Create custom icon based on vehicle type and status
+            let iconHtml = `
+                <div style="
+                    background: ${vehicle.getStatusColor()};
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 14px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                ">
+                    ${vehicle.getIcon()}
+                </div>
+            `;
+
+            let customIcon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            const marker = L.marker([vehicle.lat, vehicle.lng], { icon: customIcon });
+            
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <h4>${vehicle.getIcon()} ${vehicle.name}</h4>
+                    <p><strong>Plate:</strong> ${vehicle.licensePlate}</p>
+                    <p><strong>Driver:</strong> ${vehicle.driver}</p>
+                    <p><strong>Status:</strong> <span style="color: ${vehicle.getStatusColor()}">${vehicle.status}</span></p>
+                    <p><strong>Speed:</strong> ${vehicle.speed} km/h</p>
+                    <p><strong>Battery:</strong> ${vehicle.battery}%</p>
+                    <p><strong>Fuel:</strong> ${vehicle.fuel}%</p>
+                    <button onclick="trackVehicle(${vehicle.id})" class="btn btn-primary" style="margin-top: 5px;">Track Vehicle</button>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            vehicleMarkers[vehicle.id] = marker;
+
+            // Add to cluster group
+            markerCluster.addLayer(marker);
+
+            // Initialize trail for this vehicle
+            vehicleTrails[vehicle.id] = [];
+
+            marker.on('click', function() {
+                selectVehicle(vehicle.id);
+            });
+        }
+
+        // Update vehicle position on map
+        function updateVehicleOnMap(vehicle) {
+            if (vehicleMarkers[vehicle.id]) {
+                let newLatLng = [vehicle.lat, vehicle.lng];
+                vehicleMarkers[vehicle.id].setLatLng(newLatLng);
+                
+                // Update trail
+                vehicleTrails[vehicle.id].push(newLatLng);
+                if (vehicleTrails[vehicle.id].length > 50) {
+                    vehicleTrails[vehicle.id].shift(); // Keep only last 50 positions
+                }
+
+                // Update custom icon
+                let iconHtml = `
+                    <div style="
+                        background: ${vehicle.getStatusColor()};
+                        width: 30px;
+                        height: 30px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 14px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                    ">
+                        ${vehicle.getIcon()}
+                    </div>
+                `;
+
+                let customIcon = L.divIcon({
+                    html: iconHtml,
+                    className: 'custom-marker',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+
+                vehicleMarkers[vehicle.id].setIcon(customIcon);
+                
+                const popupContent = `
+                    <div style="min-width: 200px;">
+                        <h4>${vehicle.getIcon()} ${vehicle.name}</h4>
+                        <p><strong>Plate:</strong> ${vehicle.licensePlate}</p>
+                        <p><strong>Driver:</strong> ${vehicle.driver}</p>
+                        <p><strong>Status:</strong> <span style="color: ${vehicle.getStatusColor()}">${vehicle.status}</span></p>
+                        <p><strong>Speed:</strong> ${vehicle.speed} km/h</p>
+                        <p><strong>Battery:</strong> ${vehicle.battery}%</p>
+                        <p><strong>Fuel:</strong> ${vehicle.fuel}%</p>
+                        <button onclick="trackVehicle(${vehicle.id})" class="btn btn-primary" style="margin-top: 5px;">Track Vehicle</button>
+                    </div>
+                `;
+                
+                vehicleMarkers[vehicle.id].setPopupContent(popupContent);
+            }
+        }
+
+        // Render vehicle list
+        function renderVehicleList() {
+            const vehicleList = document.getElementById('vehicleList');
+            vehicleList.innerHTML = '';
+
+            vehicles.forEach(vehicle => {
+                const vehicleItem = document.createElement('div');
+                vehicleItem.className = `vehicle-item ${selectedVehicle === vehicle.id ? 'active' : ''}`;
+                vehicleItem.onclick = () => selectVehicle(vehicle.id);
+
+                vehicleItem.innerHTML = `
+                    <div class="vehicle-info">
+                        <div>
+                            <div style="font-weight: bold;">${vehicle.getIcon()} ${vehicle.name}</div>
+                            <div style="font-size: 0.9rem; color: #666;">${vehicle.licensePlate}</div>
+                        </div>
+                        <div>
+                            <div class="vehicle-status status-${vehicle.status}">${vehicle.status}</div>
+                            <div style="font-size: 0.8rem; margin-top: 0.2rem;">${vehicle.speed} km/h</div>
+                        </div>
+                    </div>
+                `;
+
+                vehicleList.appendChild(vehicleItem);
+            });
+        }
+
+        // Select vehicle
+        function selectVehicle(vehicleId) {
+            selectedVehicle = vehicleId;
+            const vehicle = vehicles.find(v => v.id === vehicleId);
+            
+            if (vehicle) {
+                // Center map on selected vehicle
+                map.setView([vehicle.lat, vehicle.lng], 15);
+                
+                // Show vehicle details
+                showVehicleDetails(vehicle);
+                
+                // Update UI
+                renderVehicleList();
+            }
+        }
+
+        // Show vehicle details
+        function showVehicleDetails(vehicle) {
+            const detailsDiv = document.getElementById('vehicleDetails');
+            const contentDiv = document.getElementById('detailsContent');
+            
+            contentDiv.innerHTML = `
+                <div class="detail-row">
+                    <span>Driver:</span>
+                    <span>${vehicle.driver}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Type:</span>
+                    <span>${vehicle.type}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Speed:</span>
+                    <span>${vehicle.speed} km/h</span>
+                </div>
+                <div class="detail-row">
+                    <span>Battery:</span>
+                    <span>${vehicle.battery}%</span>
+                </div>
+                <div class="detail-row">
+                    <span>Fuel:</span>
+                    <span>${vehicle.fuel}%</span>
+                </div>
+                <div class="detail-row">
+                    <span>Odometer:</span>
+                    <span>${Math.floor(vehicle.odometer)} km</span>
+                </div>
+                <div class="detail-row">
+                    <span>Last Update:</span>
+                    <span>${vehicle.lastUpdate.toLocaleTimeString()}</span>
+                </div>
+            `;
+            
+            detailsDiv.style.display = 'block';
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalVehicles').textContent = vehicles.length;
+            document.getElementById('activeVehicles').textContent = vehicles.filter(v => v.status !== 'offline').length;
+            document.getElementById('movingVehicles').textContent = vehicles.filter(v => v.status === 'moving').length;
+            
+            // Generate random alerts
+            const alertsCount = Math.floor(Math.random() * 3);
+            document.getElementById('alertsCount').textContent = alertsCount;
+            
+            if (alertsCount > 0) {
+                showAlerts(alertsCount);
+            }
+        }
+
+        // Show alerts
+        function showAlerts(count) {
+            const alertsDiv = document.getElementById('alerts');
+            const alertMessages = [
+                'Vehicle ABC-123 has low fuel (15%)',
+                'Vehicle DEF-456 is speeding (95 km/h)',
+                'Vehicle GHI-789 battery is low (12%)',
+                'Vehicle JKL-012 has been idle for 2 hours'
+            ];
+            
+            alertsDiv.innerHTML = '';
+            
+            for (let i = 0; i < count; i++) {
+                const alert = document.createElement('div');
+                alert.className = 'alert';
+                alert.textContent = alertMessages[i % alertMessages.length];
+                alertsDiv.appendChild(alert);
+            }
+        }
+
+        // Toggle tracking
+        function toggleTracking() {
+            const button = event.target;
+            
+            if (isTracking) {
+                clearInterval(trackingInterval);
+                button.textContent = 'Start Tracking';
+                button.className = 'btn btn-secondary';
+                isTracking = false;
+            } else {
+                trackingInterval = setInterval(updateTracking, 3000);
+                button.textContent = 'Stop Tracking';
+                button.className = 'btn btn-primary';
+                isTracking = true;
+            }
+        }
+
+        // Update tracking
+        function updateTracking() {
+            vehicles.forEach(vehicle => {
+                vehicle.updatePosition();
+                updateVehicleOnMap(vehicle);
+            });
+            
+            // Update heatmap if active
+            updateHeatmap();
+            
+            // Check geofence violations
+            checkGeofenceViolations();
+            
+            renderVehicleList();
+            updateStats();
+            
+            // Update selected vehicle details if any
+            if (selectedVehicle) {
+                const vehicle = vehicles.find(v => v.id === selectedVehicle);
+                if (vehicle) {
+                    showVehicleDetails(vehicle);
+                }
+            }
+        }
+
+        // Map control functions
+        function toggleClustering() {
+            if (map.hasLayer(markerCluster)) {
+                map.removeLayer(markerCluster);
+                // Add individual markers
+                Object.values(vehicleMarkers).forEach(marker => {
+                    map.addLayer(marker);
+                });
+            } else {
+                // Remove individual markers and add cluster
+                Object.values(vehicleMarkers).forEach(marker => {
+                    map.removeLayer(marker);
+                });
+                map.addLayer(markerCluster);
+            }
+        }
+
+        function toggleHeatmap() {
+            if (heatmapLayer && map.hasLayer(heatmapLayer)) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+            } else {
+                createHeatmap();
+            }
+        }
+
+        function createHeatmap() {
+            let heatData = vehicles.map(vehicle => [vehicle.lat, vehicle.lng, vehicle.speed / 100]);
+            heatmapLayer = L.heatLayer(heatData, {
+                radius: 30,
+                blur: 15,
+                maxZoom: 17,
+                gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
+            }).addTo(map);
+        }
+
+        function updateHeatmap() {
+            if (heatmapLayer) {
+                let heatData = vehicles.map(vehicle => [vehicle.lat, vehicle.lng, vehicle.speed / 100]);
+                heatmapLayer.setLatLngs(heatData);
+            }
+        }
+
+        function showTrafficLayer() {
+            // Simulate traffic layer (in real app, use Google Maps or similar)
+            if (trafficLayer && map.hasLayer(trafficLayer)) {
+                map.removeLayer(trafficLayer);
+                trafficLayer = null;
+            } else {
+                // Create mock traffic data
+                let trafficData = [];
+                for (let i = 0; i < 20; i++) {
+                    let lat = 40.7128 + (Math.random() - 0.5) * 0.1;
+                    let lng = -74.0060 + (Math.random() - 0.5) * 0.1;
+                    trafficData.push([[lat, lng], [lat + 0.01, lng + 0.01]]);
+                }
+                
+                trafficLayer = L.layerGroup();
+                trafficData.forEach(segment => {
+                    let color = ['green', 'yellow', 'red'][Math.floor(Math.random() * 3)];
+                    L.polyline(segment, {color: color, weight: 5, opacity: 0.7}).addTo(trafficLayer);
+                });
+                trafficLayer.addTo(map);
+            }
+        }
+
+        function toggleGeofencing() {
+            let controls = document.getElementById('geofenceControls');
+            if (controls.style.display === 'none') {
+                controls.style.display = 'block';
+                map.addControl(drawControl);
+            } else {
+                controls.style.display = 'none';
+                map.removeControl(drawControl);
+            }
+        }
+
+        function drawGeofence() {
+            // Activate drawing mode
+            new L.Draw.Circle(map, drawControl.options.draw.circle).enable();
+        }
+
+        function clearGeofences() {
+            drawnItems.clearLayers();
+            geofences = [];
+        }
+
+        function checkGeofenceViolations() {
+            vehicles.forEach(vehicle => {
+                let point = L.latLng(vehicle.lat, vehicle.lng);
+                geofences.forEach(fence => {
+                    let isInside = false;
+                    if (fence instanceof L.Circle) {
+                        isInside = fence.getLatLng().distanceTo(point) <= fence.getRadius();
+                    } else if (fence instanceof L.Polygon || fence instanceof L.Rectangle) {
+                        isInside = fence.getBounds().contains(point);
+                    }
+                    
+                    if (!isInside && vehicle.status === 'moving') {
+                        // Vehicle is outside geofence - could trigger alert
+                        console.log(`Vehicle ${vehicle.name} is outside geofence`);
+                    }
+                });
+            });
+        }
+
+        function showRouting() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            } else if (vehicles.length >= 2) {
+                let start = vehicles[0];
+                let end = vehicles[1];
+                
+                routingControl = L.Routing.control({
+                    waypoints: [
+                        L.latLng(start.lat, start.lng),
+                        L.latLng(end.lat, end.lng)
+                    ],
+                    routeWhileDragging: true,
+                    createMarker: function(i, waypoint, n) {
+                        return L.marker(waypoint.latLng).bindPopup(`Waypoint ${i + 1}`);
+                    }
+                }).addTo(map);
+            }
+        }
+
+        function centerAllVehicles() {
+            if (vehicles.length > 0) {
+                let group = new L.featureGroup(Object.values(vehicleMarkers));
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        function trackVehicle(vehicleId) {
+            let vehicle = vehicles.find(v => v.id === vehicleId);
+            if (vehicle) {
+                map.setView([vehicle.lat, vehicle.lng], 16);
+                selectVehicle(vehicleId);
+                
+                // Show vehicle trail
+                if (vehicleTrails[vehicleId] && vehicleTrails[vehicleId].length > 1) {
+                    L.polyline(vehicleTrails[vehicleId], {
+                        color: vehicle.getStatusColor(),
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '5, 10'
+                    }).addTo(map);
+                }
+            }
+        }
+        
+
+        // Modal functions
+        function openAddVehicleModal() {
+            document.getElementById('addVehicleModal').style.display = 'block';
+        }
+
+        function closeAddVehicleModal() {
+            document.getElementById('addVehicleModal').style.display = 'none';
+            document.getElementById('addVehicleForm').reset();
+        }
+
+        // Add vehicle form submission
+        document.getElementById('addVehicleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('vehicleName').value;
+            const plate = document.getElementById('licensePlate').value;
+            const type = document.getElementById('vehicleType').value;
+            const driver = document.getElementById('driverName').value;
+            
+            // Generate random location near NYC
+            const lat = 40.7128 + (Math.random() - 0.5) * 0.1;
+            const lng = -74.0060 + (Math.random() - 0.5) * 0.1;
+            
+            const newVehicle = new Vehicle(
+                vehicles.length + 1,
+                name,
+                plate,
+                type,
+                driver,
+                lat,
+                lng
+            );
+            
+            vehicles.push(newVehicle);
+            addVehicleToMap(newVehicle);
+            renderVehicleList();
+            updateStats();
+            
+            closeAddVehicleModal();
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('addVehicleModal');
+            if (event.target === modal) {
+                closeAddVehicleModal();
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAddVehicleModal();
+            }
+        });
+    </script>
+</body>
+</html>
